@@ -61,10 +61,10 @@ jobs:
     - name: Ensure Clean Gradle Wrapper
       run: npm run reinit-gradle
 
-    - name: Build Android APK & AAB
+    - name: Build Android APK & AAB (Release)
       run: |
         cd android
-        ./gradlew assembleDebug bundleDebug
+        ./gradlew assembleRelease bundleRelease
 
     - name: Upload Web Build Artifacts
       uses: actions/upload-artifact@v4
@@ -73,17 +73,17 @@ jobs:
         path: dist/
         retention-days: 14
 
-    - name: Upload Android APK
+    - name: Upload Android APK (Release)
       uses: actions/upload-artifact@v4
       with:
-        name: android-apk
-        path: android/app/build/outputs/apk/debug/*.apk
+        name: android-apk-release
+        path: android/app/build/outputs/apk/release/*.apk
         retention-days: 14
 
-    - name: Upload Android AAB
+    - name: Upload Android AAB (Release)
       uses: actions/upload-artifact@v4
       with:
-        name: android-aab
-        path: android/app/build/outputs/bundle/debug/*.aab
+        name: android-aab-release
+        path: android/app/build/outputs/bundle/release/*.aab
         retention-days: 14
 

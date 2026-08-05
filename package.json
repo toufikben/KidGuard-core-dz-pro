@@ -11,6 +11,8 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "audit": "npm audit --audit-level=high",
+    "build:apk": "cd android && ./gradlew assembleRelease",
+    "build:aab": "cd android && ./gradlew bundleRelease",
     "reinit-gradle": "bash scripts/reinit-gradle.sh"
   },
   "dependencies": {
