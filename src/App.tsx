@@ -1,18 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Navbar } from './components/Navbar';
 import { BottomNav, ActiveTab } from './components/BottomNav';
 import { PinLockScreen } from './components/PinLockScreen';
-
-import { DashboardScreen } from './screens/DashboardScreen';
-import { GeofenceScreen } from './screens/GeofenceScreen';
-import { HistoryScreen } from './screens/HistoryScreen';
-import { AlertsScreen } from './screens/AlertsScreen';
-import { KidsManagerScreen } from './screens/KidsManagerScreen';
-import { SettingsScreen } from './screens/SettingsScreen';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 import { StorageService } from './services/storage';
 import { audioSiren } from './services/audioSiren';
 import { NotificationService } from './services/notifications';
+import { locationService, LocationPosition } from './services/LocationService';
 import { AppStrings } from './i18n/translations';
 import {
   KidProfile,
@@ -32,6 +27,22 @@ import { BehaviorAnalyzer } from './domain/analyzer/BehaviorAnalyzer';
 import { EmergencyEngine } from './domain/emergency/EmergencyEngine';
 
 import { TimelineEventItem } from './components/EventTimelineWidget';
+
+// Lazy-loaded main screens
+const DashboardScreen = lazy(() => import('./screens/DashboardScreen').then((m) => ({ default: m.DashboardScreen })));
+const GeofenceScreen = lazy(() => import('./screens/GeofenceScreen').then((m) => ({ default: m.GeofenceScreen })));
+const HistoryScreen = lazy(() => import('./screens/HistoryScreen').then((m) => ({ default: m.HistoryScreen })));
+const AlertsScreen = lazy(() => import('./screens/AlertsScreen').then((m) => ({ default: m.AlertsScreen })));
+const KidsManagerScreen = lazy(() => import('./screens/KidsManagerScreen').then((m) => ({ default: m.KidsManagerScreen })));
+const SettingsScreen = lazy(() => import('./screens/SettingsScreen').then((m) => ({ default: m.SettingsScreen })));
+
+// Fallback spinner skeleton while lazy-loading screen chunk
+const LoadingFallback: React.FC = () => (
+  <div className="flex flex-col items-center justify-center min-h-[450px] p-6 text-slate-400 gap-3">
+    <div className="w-10 h-10 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+    <span className="text-xs font-semibold tracking-wide uppercase text-slate-500">Loading Module...</span>
+  </div>
+);
 
 // Fallback coordinates when no kid is selected yet - central Algiers, matching
 // the app's target market (see services/storage.ts default demo data).
@@ -160,95 +171,71 @@ export const App: React.FC = () => {
 
   const activeKid = kids.find((k) => k.id === selectedKidId) || kids[0] || null;
 
-  // Real-time Browser GPS Tracking
+  // Real-time Browser GPS Tracking via LocationService
   useEffect(() => {
-    if (isSimulatingWalk || !isGpsActive || isAirplaneMode || !isPermissionsGranted || !activeKid) {
+    if (isSimulatingWalk || !isGpsActive || isAirplaneMode || !isPermissionsGranted || !activeKid || authState.type !== 'Unlocked') {
+      locationService.stopTracking();
       return;
     }
 
-    if (!('geolocation' in navigator)) {
-      return;
-    }
+    const handleNewPosition = (pos: LocationPosition) => {
+      const { latitude, longitude, speedKmh, timestamp } = pos;
+      const now = timestamp || Date.now();
 
-    let lastLat = activeKid.currentLat;
-    let lastLng = activeKid.currentLng;
-    let lastTime = Date.now();
+      const status = geofenceMonitorRef.current.monitorCoordinates(
+        activeKid.id,
+        latitude,
+        longitude,
+        geofences
+      );
 
-    const watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        const { latitude, longitude, speed } = position.coords;
-        const now = Date.now();
-        const timeDiffSec = Math.max(1, (now - lastTime) / 1000);
+      const behaviorEvents = behaviorAnalyzerRef.current.analyze({
+        latitude,
+        longitude,
+        speedKmh,
+        timestampMs: now,
+        insideSafeZone: status.isInsideSafeZone,
+        zoneName: status.matchedZone?.name,
+      });
 
-        let calculatedSpeedKmh = 0;
-        if (speed !== null && speed !== undefined && !isNaN(speed)) {
-          calculatedSpeedKmh = speed * 3.6;
-        } else {
-          const dLat = (latitude - lastLat) * 111000;
-          const dLng = (longitude - lastLng) * 111000 * Math.cos((latitude * Math.PI) / 180);
-          const distMeters = Math.sqrt(dLat * dLat + dLng * dLng);
-          calculatedSpeedKmh = (distMeters / timeDiffSec) * 3.6;
-        }
+      const emergencyTick = emergencyEngineRef.current.evaluate(behaviorEvents);
+      setRiskScore(emergencyTick.riskScore);
+      setActiveActions(emergencyEngineRef.current.getActiveActions());
 
-        lastLat = latitude;
-        lastLng = longitude;
-        lastTime = now;
+      setKids((prevKids) =>
+        prevKids.map((k) =>
+          k.id === activeKid.id
+            ? {
+                ...k,
+                currentLat: latitude,
+                currentLng: longitude,
+                currentSpeedKmh: speedKmh,
+                lastUpdatedTime: now,
+                statusText: pos.source === 'SIGNAL_LOST' ? 'GPS Signal Lost' : status.statusMessage,
+              }
+            : k
+        )
+      );
 
-        const status = geofenceMonitorRef.current.monitorCoordinates(
-          activeKid.id,
-          activeKid.name,
-          latitude,
-          longitude,
-          geofences
-        );
+      const newLog: LocationLog = {
+        id: now,
+        kidId: activeKid.id,
+        latitude,
+        longitude,
+        speedKmh,
+        timestamp: now,
+        addressLabel: status.isInsideSafeZone ? status.matchedZone?.name || 'Safe Boundary' : 'Live GPS Location',
+      };
+      setLocationLogs((prev) => [newLog, ...prev.slice(0, 49)]);
 
-        const behaviorEvents = behaviorAnalyzerRef.current.analyze({
-          latitude,
-          longitude,
-          speedKmh: calculatedSpeedKmh,
-          timestampMs: now,
-          insideSafeZone: status.isInsideSafeZone,
-          zoneName: status.matchedZone?.name,
-        });
-
-        const emergencyTick = emergencyEngineRef.current.evaluate(behaviorEvents);
-        setRiskScore(emergencyTick.riskScore);
-        setActiveActions(emergencyEngineRef.current.getActiveActions());
-
-        setKids((prevKids) =>
-          prevKids.map((k) =>
-            k.id === activeKid.id
-              ? {
-                  ...k,
-                  currentLat: latitude,
-                  currentLng: longitude,
-                  currentSpeedKmh: calculatedSpeedKmh,
-                  lastUpdatedTime: now,
-                  statusText: status.statusMessage,
-                }
-              : k
-          )
-        );
-
-        const newLog: LocationLog = {
+      if (status.isExitEventDetected) {
+        const breachAlert: AlertEvent = {
           id: now,
           kidId: activeKid.id,
-          latitude,
-          longitude,
-          speedKmh: calculatedSpeedKmh,
-          timestamp: now,
-          addressLabel: status.isInsideSafeZone ? status.matchedZone?.name || 'Safe Boundary' : 'Live GPS Location',
-        };
-        setLocationLogs((prev) => [newLog, ...prev.slice(0, 49)]);
-
-        if (status.isExitEventDetected) {
-          const breachAlert: AlertEvent = {
-            id: now,
-            kidId: activeKid.id,
-            kidName: activeKid.name,
-            alertType: 'BREACH_OUT',
-            title: '🚨 Geofence Breach Out Alert!',
-            message: `${activeKid.name} exited safe boundary zone! Risk Score: ${emergencyTick.riskScore}/100.`,
+          kidName: activeKid.name,
+          alertType: 'BREACH_OUT',
+          title: '🚨 Geofence Breach Out Alert!',
+          message: `${activeKid.name} exited safe boundary zone! Risk Score: ${emergencyTick.riskScore}/100.`,
             timestamp: now,
             latitude,
             longitude,
@@ -271,19 +258,25 @@ export const App: React.FC = () => {
             ...prev,
           ]);
         }
-      },
-      (error) => {
-        console.warn('Geolocation positioning unavailable or ungranted:', error.message);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 2000,
-      }
-    );
+      };
 
-    return () => navigator.geolocation.clearWatch(watchId);
-  }, [isSimulatingWalk, isGpsActive, isAirplaneMode, isPermissionsGranted, activeKid, geofences]);
+      locationService.startTracking(
+        handleNewPosition,
+        (error) => {
+          console.warn('Geolocation positioning unavailable or ungranted:', error.message);
+        },
+        undefined,
+        {
+          enableHighAccuracy: true,
+          gpsTimeoutMs: 10000,
+          signalLossThresholdMs: 15000,
+        }
+      );
+
+      return () => {
+        locationService.stopTracking();
+      };
+    }, [isSimulatingWalk, isGpsActive, isAirplaneMode, isPermissionsGranted, activeKid?.id, geofences, authState.type]);
 
   // Real-time GPS & Simulated Walk Trajectory Loop
   useEffect(() => {
@@ -303,7 +296,6 @@ export const App: React.FC = () => {
       // Geofence & Risk Engine Evaluation
       const status = geofenceMonitorRef.current.monitorCoordinates(
         activeKid.id,
-        activeKid.name,
         newLat,
         newLng,
         geofences
@@ -464,8 +456,9 @@ export const App: React.FC = () => {
     NotificationService.requestPermission();
     audioSiren.startSiren();
     NotificationService.sendAlertNotification(
-      '🆘 EMERGENCY PANIC SOS!',
-      `Panic button pressed for ${activeKid.name}! Parent hotline ${parentAuth.parentPhone} notified.`
+      AppStrings.getNotifSosTitle(currentLang),
+      AppStrings.getNotifSosBody(currentLang, activeKid.name, parentAuth.parentPhone),
+      'sos_emergency'
     );
 
     const sosAlert: AlertEvent = {
@@ -645,112 +638,116 @@ export const App: React.FC = () => {
 
           {/* Main Content Area */}
           <main className="flex-1 max-w-7xl w-full mx-auto">
-            {activeTab === 'radar' && (
-              <DashboardScreen
-                kid={activeKid}
-                geofences={geofences}
-                parentAuth={parentAuth}
-                currentLang={currentLang}
-                isSimulatingWalk={isSimulatingWalk}
-                onToggleSimulateWalk={handleToggleSimulateWalk}
-                onTriggerSos={handleTriggerSos}
-                onCheckIn={handleCheckIn}
-                onToggleBatterySimulation={handleToggleBatterySimulation}
-                onCallParent={handleCallParent}
-                onSmsParent={handleSmsParent}
-                onUpdateParentPhone={(phone) => setParentAuth({ ...parentAuth, parentPhone: phone })}
-                onOpenGeofencePicker={() => setActiveTab('geofence')}
-                riskScore={riskScore}
-                activeActions={activeActions}
-                adaptiveSamplingText={getAdaptiveSamplingText()}
-                timelineEvents={timelineEvents}
-                isGpsActive={isGpsActive}
-                isAirplaneMode={isAirplaneMode}
-                isPermissionsGranted={isPermissionsGranted}
-                onSimulateTamper={handleSimulateTamper}
-                onToggleGps={() => {
-                  setIsGpsActive((prev) => {
-                    const next = !prev;
-                    if (!next) handleSimulateTamper('GPS_DISABLED');
-                    return next;
-                  });
-                }}
-                onToggleAirplaneMode={() => {
-                  setIsAirplaneMode((prev) => {
-                    const next = !prev;
-                    if (next) handleSimulateTamper('AIRPLANE_MODE');
-                    return next;
-                  });
-                }}
-                onTogglePermissions={() => {
-                  setIsPermissionsGranted((prev) => {
-                    const next = !prev;
-                    if (!next) handleSimulateTamper('PERMISSION_REVOKED');
-                    return next;
-                  });
-                }}
-                onResetRisk={handleResetRisk}
-                onClearTimeline={() => setTimelineEvents([])}
-              />
-            )}
+            <ErrorBoundary>
+              <Suspense fallback={<LoadingFallback />}>
+                {activeTab === 'radar' && (
+                  <DashboardScreen
+                    kid={activeKid}
+                    geofences={geofences}
+                    parentAuth={parentAuth}
+                    currentLang={currentLang}
+                    isSimulatingWalk={isSimulatingWalk}
+                    onToggleSimulateWalk={handleToggleSimulateWalk}
+                    onTriggerSos={handleTriggerSos}
+                    onCheckIn={handleCheckIn}
+                    onToggleBatterySimulation={handleToggleBatterySimulation}
+                    onCallParent={handleCallParent}
+                    onSmsParent={handleSmsParent}
+                    onUpdateParentPhone={(phone) => setParentAuth({ ...parentAuth, parentPhone: phone })}
+                    onOpenGeofencePicker={() => setActiveTab('geofence')}
+                    riskScore={riskScore}
+                    activeActions={activeActions}
+                    adaptiveSamplingText={getAdaptiveSamplingText()}
+                    timelineEvents={timelineEvents}
+                    isGpsActive={isGpsActive}
+                    isAirplaneMode={isAirplaneMode}
+                    isPermissionsGranted={isPermissionsGranted}
+                    onSimulateTamper={handleSimulateTamper}
+                    onToggleGps={() => {
+                      setIsGpsActive((prev) => {
+                        const next = !prev;
+                        if (!next) handleSimulateTamper('GPS_DISABLED');
+                        return next;
+                      });
+                    }}
+                    onToggleAirplaneMode={() => {
+                      setIsAirplaneMode((prev) => {
+                        const next = !prev;
+                        if (next) handleSimulateTamper('AIRPLANE_MODE');
+                        return next;
+                      });
+                    }}
+                    onTogglePermissions={() => {
+                      setIsPermissionsGranted((prev) => {
+                        const next = !prev;
+                        if (!next) handleSimulateTamper('PERMISSION_REVOKED');
+                        return next;
+                      });
+                    }}
+                    onResetRisk={handleResetRisk}
+                    onClearTimeline={() => setTimelineEvents([])}
+                  />
+                )}
 
-            {activeTab === 'geofence' && (
-              <GeofenceScreen
-                geofences={geofences}
-                defaultLat={activeKid?.currentLat ?? FALLBACK_LAT}
-                defaultLng={activeKid?.currentLng ?? FALLBACK_LNG}
-                currentLang={currentLang}
-                onSaveGeofence={handleSaveGeofence}
-                onToggleGeofence={handleToggleGeofence}
-                onDeleteGeofence={handleDeleteGeofence}
-                kid={activeKid}
-              />
-            )}
+                {activeTab === 'geofence' && (
+                  <GeofenceScreen
+                    geofences={geofences}
+                    defaultLat={activeKid?.currentLat ?? FALLBACK_LAT}
+                    defaultLng={activeKid?.currentLng ?? FALLBACK_LNG}
+                    currentLang={currentLang}
+                    onSaveGeofence={handleSaveGeofence}
+                    onToggleGeofence={handleToggleGeofence}
+                    onDeleteGeofence={handleDeleteGeofence}
+                    kid={activeKid}
+                  />
+                )}
 
-            {activeTab === 'history' && (
-              <HistoryScreen
-                logs={locationLogs}
-                currentLang={currentLang}
-                onClearLogs={() => setLocationLogs([])}
-              />
-            )}
+                {activeTab === 'history' && (
+                  <HistoryScreen
+                    logs={locationLogs}
+                    currentLang={currentLang}
+                    onClearLogs={() => setLocationLogs([])}
+                  />
+                )}
 
-            {activeTab === 'alerts' && (
-              <AlertsScreen
-                alerts={alerts}
-                currentLang={currentLang}
-                onMarkAllRead={() => setAlerts((prev) => prev.map((a) => ({ ...a, isRead: true })))}
-                onDeleteAlert={(id) => setAlerts((prev) => prev.filter((a) => a.id !== id))}
-              />
-            )}
+                {activeTab === 'alerts' && (
+                  <AlertsScreen
+                    alerts={alerts}
+                    currentLang={currentLang}
+                    onMarkAllRead={() => setAlerts((prev) => prev.map((a) => ({ ...a, isRead: true })))}
+                    onDeleteAlert={(id) => setAlerts((prev) => prev.filter((a) => a.id !== id))}
+                  />
+                )}
 
-            {activeTab === 'kids' && (
-              <KidsManagerScreen
-                kids={kids}
-                selectedKidId={selectedKidId}
-                currentLang={currentLang}
-                onSelectKid={setSelectedKidId}
-                onSaveKid={(kid) => {
-                  setKids((prev) => {
-                    const exists = prev.some((k) => k.id === kid.id);
-                    return exists ? prev.map((k) => (k.id === kid.id ? kid : k)) : [...prev, kid];
-                  });
-                }}
-                onDeleteKid={handleDeleteKid}
-              />
-            )}
+                {activeTab === 'kids' && (
+                  <KidsManagerScreen
+                    kids={kids}
+                    selectedKidId={selectedKidId}
+                    currentLang={currentLang}
+                    onSelectKid={setSelectedKidId}
+                    onSaveKid={(kid) => {
+                      setKids((prev) => {
+                        const exists = prev.some((k) => k.id === kid.id);
+                        return exists ? prev.map((k) => (k.id === kid.id ? kid : k)) : [...prev, kid];
+                      });
+                    }}
+                    onDeleteKid={handleDeleteKid}
+                  />
+                )}
 
-            {activeTab === 'settings' && (
-              <SettingsScreen
-                auth={parentAuth}
-                currentLang={currentLang}
-                currentTheme={currentTheme}
-                onLanguageChange={setCurrentLang}
-                onThemeChange={setCurrentTheme}
-                onUpdateParentAuth={setParentAuth}
-                onLockApp={() => setAuthState({ type: 'Locked' })}
-              />
-            )}
+                {activeTab === 'settings' && (
+                  <SettingsScreen
+                    auth={parentAuth}
+                    currentLang={currentLang}
+                    currentTheme={currentTheme}
+                    onLanguageChange={setCurrentLang}
+                    onThemeChange={setCurrentTheme}
+                    onUpdateParentAuth={setParentAuth}
+                    onLockApp={() => setAuthState({ type: 'Locked' })}
+                  />
+                )}
+              </Suspense>
+            </ErrorBoundary>
           </main>
 
           {/* Bottom Tab Bar */}

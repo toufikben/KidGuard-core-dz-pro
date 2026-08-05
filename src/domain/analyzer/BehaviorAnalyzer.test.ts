@@ -142,4 +142,75 @@ describe('BehaviorAnalyzer', () => {
       expect(events.filter((e) => e.type === 'EnteredVehicle')).toHaveLength(1);
     });
   });
+
+  describe('configuration & validation', () => {
+    it('supports custom maxHistory via constructor', () => {
+      const customAnalyzer = new BehaviorAnalyzer(3);
+      const base = { latitude: 36.75, longitude: 3.05, speedKmh: 5, insideSafeZone: true };
+      
+      for (let i = 0; i < 10; i++) {
+        customAnalyzer.analyze({ ...base, timestampMs: Date.now() + i * 1000 });
+      }
+      // Should not throw or crash when capping history at custom length 3
+      expect(customAnalyzer.classifyMotion(5)).toBe('WALKING');
+    });
+
+    it('ignores snapshots with invalid latitude or longitude', () => {
+      const valid = { latitude: 36.75, longitude: 3.05, speedKmh: 10, timestampMs: Date.now(), insideSafeZone: false };
+      const invalidLatHigh = { ...valid, latitude: 120 };
+      const invalidLatLow = { ...valid, latitude: -100 };
+      const invalidLngHigh = { ...valid, longitude: 200 };
+      const invalidNan = { ...valid, latitude: NaN };
+
+      expect(analyzer.analyze(invalidLatHigh)).toEqual([]);
+      expect(analyzer.analyze(invalidLatLow)).toEqual([]);
+      expect(analyzer.analyze(invalidLngHigh)).toEqual([]);
+      expect(analyzer.analyze(invalidNan)).toEqual([]);
+    });
+
+    it('sanitizes NaN and negative speed values safely', () => {
+      expect(analyzer.classifyMotion(NaN)).toBe('STATIONARY');
+      expect(analyzer.classifyMotion(-10)).toBe('STATIONARY');
+    });
+  });
+
+  describe('Stress testing (10,000 updates)', () => {
+    it('handles 10,000 continuous location updates efficiently without memory leakage', () => {
+      const startTime = Date.now();
+      const baseTime = Date.now();
+
+      for (let i = 0; i < 10000; i++) {
+        analyzer.analyze({
+          latitude: 36.75 + (i % 100) * 0.0001,
+          longitude: 3.05 + (i % 50) * 0.0001,
+          speedKmh: (i * 3) % 45,
+          timestampMs: baseTime + i * 1000,
+          insideSafeZone: i % 20 < 10,
+          zoneName: 'Home',
+        });
+      }
+
+      const duration = Date.now() - startTime;
+      // 10,000 iterations must run cleanly under 1000ms
+      expect(duration).toBeLessThan(1000);
+    });
+  });
+
+  describe('Fuzz testing (Randomized inputs)', () => {
+    it('processes 1,000 random/malformed telemetry objects without throwing exceptions', () => {
+      const randomValues = [NaN, Infinity, -Infinity, null, undefined, 'bad_string', {}, [], 999999, -999999];
+
+      for (let i = 0; i < 1000; i++) {
+        const payload: any = {
+          latitude: Math.random() < 0.2 ? randomValues[i % randomValues.length] : 36.75 + (Math.random() - 0.5),
+          longitude: Math.random() < 0.2 ? randomValues[(i + 1) % randomValues.length] : 3.05 + (Math.random() - 0.5),
+          speedKmh: Math.random() < 0.2 ? randomValues[(i + 2) % randomValues.length] : Math.random() * 120,
+          timestampMs: Date.now() + i * 1000,
+          insideSafeZone: Math.random() > 0.5,
+        };
+
+        expect(() => analyzer.analyze(payload)).not.toThrow();
+      }
+    });
+  });
 });

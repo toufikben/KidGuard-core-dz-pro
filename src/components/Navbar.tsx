@@ -24,13 +24,28 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
 
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isDropdownOpen) {
+        setIsDropdownOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isDropdownOpen]);
+
   return (
     <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur border-b border-slate-800 px-4 py-3">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
         {/* Logo & Title */}
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
-            <Shield className="w-4 h-4 sm:w-5 sm:h-5" />
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden border border-blue-500/30 shadow-md shadow-blue-500/10 shrink-0">
+            <img
+              src="/src/assets/images/app_desktop_icon_1785970230746.jpg"
+              alt="KidGuard Desktop Icon"
+              className="w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+            />
           </div>
           <div className="min-w-0">
             <h1 className="text-sm sm:text-base font-bold text-white tracking-tight flex items-center gap-1.5 whitespace-nowrap">
@@ -52,7 +67,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               data-testid="kid_selector_dropdown"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-xs font-semibold text-slate-200 transition-colors max-w-[110px] sm:max-w-none"
+              aria-label={AppStrings.getSelectChild(currentLang)}
+              aria-expanded={isDropdownOpen}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-xs font-semibold text-slate-200 transition-colors max-w-[110px] sm:max-w-none focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {selectedKid ? (
                 <>
@@ -77,6 +94,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       onSelectKid(kid);
                       setIsDropdownOpen(false);
                     }}
+                    aria-label={`Select child ${kid.name}`}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-left hover:bg-slate-700 transition-colors ${
                       selectedKid?.id === kid.id ? 'bg-blue-600/20 text-blue-400 font-bold' : 'text-slate-200'
                     }`}
@@ -96,7 +114,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             onClick={onOpenAlerts}
             data-testid="alerts_badge_button"
-            className="relative p-2 rounded-xl bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-slate-300 transition-colors"
+            aria-label={`${AppStrings.getNavAlerts(currentLang)} (${unreadAlertsCount} unread)`}
+            className="relative p-2 rounded-xl bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-slate-300 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
             title={AppStrings.getNavAlerts(currentLang)}
           >
             <Bell className="w-4 h-4" />
@@ -111,7 +130,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             onClick={onLockApp}
             data-testid="lock_app_button"
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-slate-300 hover:text-white transition-colors"
+            aria-label={AppStrings.getLockAppNow(currentLang)}
+            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-slate-300 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
             title={AppStrings.getLockAppNow(currentLang)}
           >
             <Lock className="w-4 h-4" />

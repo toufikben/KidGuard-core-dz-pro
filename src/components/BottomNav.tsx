@@ -59,17 +59,20 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur border-t border-slate-800 px-2 py-1.5 sm:py-2">
-      <div className="max-w-xl mx-auto flex items-center justify-around">
+    <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur border-t border-slate-800 px-2 py-1.5 sm:py-2">
+      <div role="tablist" aria-label="Application sections" className="max-w-xl mx-auto flex items-center justify-around">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
+              role="tab"
+              aria-selected={isActive}
+              aria-label={tab.badge ? `${tab.label} (${tab.badge} unread alerts)` : tab.label}
               onClick={() => onTabChange(tab.id)}
               data-testid={tab.testTag}
-              className={`relative flex-1 min-w-0 flex flex-col items-center gap-0.5 px-1 py-1 sm:py-1.5 rounded-xl transition-all ${
+              className={`relative flex-1 min-w-0 flex flex-col items-center gap-0.5 px-1 py-1 sm:py-1.5 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 isActive
                   ? 'text-blue-400 bg-blue-500/10 font-bold'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'

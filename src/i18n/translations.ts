@@ -354,6 +354,58 @@ export const AppStrings = {
       default: return 'Choose Light (White), Dark or System default theme';
     }
   },
+  getNotifSosTitle(lang: AppLanguageCode): string {
+    switch (lang) {
+      case 'ar': return '🆘 طوارئ SOS عاجل!';
+      case 'fr': return '🆘 URGENCE PANIC SOS !';
+      default: return '🆘 EMERGENCY PANIC SOS!';
+    }
+  },
+  getNotifSosBody(lang: AppLanguageCode, kidName: string, phone: string): string {
+    switch (lang) {
+      case 'ar': return `تم الضغط على زر الطوارئ لـ ${kidName}! تم إخطار خط الوالدين ${phone}.`;
+      case 'fr': return `Bouton d'urgence appuyé pour ${kidName} ! Ligne parent ${phone} notifiée.`;
+      default: return `Panic button pressed for ${kidName}! Parent hotline ${phone} notified.`;
+    }
+  },
+  getNotifBreachTitle(lang: AppLanguageCode): string {
+    switch (lang) {
+      case 'ar': return '🚨 تنبيه خروج من المنطقة الآمنة!';
+      case 'fr': return '🚨 Alerte de sortie de zone !';
+      default: return '🚨 Geofence Breach Out Alert!';
+    }
+  },
+  getNotifBreachBody(lang: AppLanguageCode, kidName: string, riskScore: number): string {
+    switch (lang) {
+      case 'ar': return `خرج ${kidName} من المنطقة الآمنة! مستوى الخطر: ${riskScore}/100.`;
+      case 'fr': return `${kidName} a quitté la zone de sécurité ! Niveau de risque : ${riskScore}/100.`;
+      default: return `${kidName} exited safe boundary zone! Risk Score: ${riskScore}/100.`;
+    }
+  },
+  getNotifLowBatteryTitle(lang: AppLanguageCode, percent: number): string {
+    switch (lang) {
+      case 'ar': return `🔋 تحذير انخفاض البطارية (${percent}%)`;
+      case 'fr': return `🔋 Batterie faible (${percent}%)`;
+      default: return `🔋 Low Battery Warning (${percent}%)`;
+    }
+  },
+  getNotifLowBatteryBody(lang: AppLanguageCode, kidName: string, percent: number): string {
+    switch (lang) {
+      case 'ar': return `بطارية جهاز ${kidName} منخفضة جداً (${percent}%). يرجى الشحن فوراً.`;
+      case 'fr': return `La batterie de ${kidName} est très faible (${percent}%). Veuillez recharger.`;
+      default: return `${kidName}'s tracking device battery is critically low (${percent}%). Please charge immediately.`;
+    }
+  },
+  getNotifTamperTitle(lang: AppLanguageCode, title: string): string {
+    return title;
+  },
+  getNotifTamperBody(lang: AppLanguageCode, kidName: string, riskScore: number): string {
+    switch (lang) {
+      case 'ar': return `تم اكتشاف محاولة تلاعب بجهاز ${kidName}! ارتفع مستوى الخطر إلى ${riskScore}/100.`;
+      case 'fr': return `Tentative d'altération détectée sur l'appareil de ${kidName} ! Risque : ${riskScore}/100.`;
+      default: return `Tamper attempt detected on ${kidName}'s device! Risk score elevated to ${riskScore}/100.`;
+    }
+  },
 };
 
 export function getKidAvatarEmoji(preset: string | undefined, name: string): string {

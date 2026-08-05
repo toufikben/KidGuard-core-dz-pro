@@ -1,0 +1,17 @@
+{
+  "short_name": "KidGuard",
+  "name": "KidGuard - Child GPS Safety & Geofence System",
+  "icons": [
+    {
+      "src": "/src/assets/images/app_desktop_icon_1785970230746.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "display": "standalone",
+  "orientation": "portrait"
+}
