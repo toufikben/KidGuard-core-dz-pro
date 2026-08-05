@@ -33,7 +33,7 @@ jobs:
       run: npx tsc --noEmit
 
     - name: Run Security Audit
-      run: npm run audit || true
+      run: npm run audit
 
     - name: Run Unit Tests & Coverage
       run: npm run test:coverage
