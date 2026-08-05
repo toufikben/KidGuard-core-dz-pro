@@ -1,0 +1,93 @@
+{
+  "entities": {
+    "KidProfile": {
+      "title": "KidProfile",
+      "description": "Represents a child device profile tracked by the parent.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "avatarPreset": { "type": "string", "maxLength": 50 },
+        "currentLat": { "type": "number" },
+        "currentLng": { "type": "number" },
+        "speedKmH": { "type": "number" },
+        "batteryPercent": { "type": "number" },
+        "statusText": { "type": "string", "maxLength": 200 },
+        "lastUpdatedMs": { "type": "number" },
+        "safeZoneRadiusMeters": { "type": "number" },
+        "ownerUid": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "name", "currentLat", "currentLng", "ownerUid"]
+    },
+    "GeofenceZone": {
+      "title": "GeofenceZone",
+      "description": "Represents a designated safe boundary zone.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "radiusMeters": { "type": "number" },
+        "color": { "type": "string", "maxLength": 50 },
+        "isActive": { "type": "boolean" },
+        "ownerUid": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "name", "latitude", "longitude", "radiusMeters", "ownerUid"]
+    },
+    "AlertEvent": {
+      "title": "AlertEvent",
+      "description": "Represents an emergency SOS or geofence breach alert.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "kidId": { "type": "string", "maxLength": 128 },
+        "kidName": { "type": "string", "maxLength": 100 },
+        "alertType": { "type": "string", "maxLength": 50 },
+        "title": { "type": "string", "maxLength": 150 },
+        "message": { "type": "string", "maxLength": 500 },
+        "timestamp": { "type": "number" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "isRead": { "type": "boolean" },
+        "ownerUid": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "kidId", "title", "message", "timestamp", "ownerUid"]
+    },
+    "TimelineEvent": {
+      "title": "TimelineEvent",
+      "description": "Represents a chronological log item for child movement & risk events.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "timeString": { "type": "string", "maxLength": 50 },
+        "timestampMs": { "type": "number" },
+        "title": { "type": "string", "maxLength": 150 },
+        "subtitle": { "type": "string", "maxLength": 300 },
+        "category": { "type": "string", "maxLength": 50 },
+        "locationName": { "type": "string", "maxLength": 200 },
+        "riskScore": { "type": "number" },
+        "ownerUid": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "title", "timestampMs", "category", "ownerUid"]
+    }
+  },
+  "firestore": {
+    "/kids/{kidId}": {
+      "schema": { "$ref": "#/entities/KidProfile" },
+      "description": "Collection of tracked child profiles owned by parents."
+    },
+    "/geofences/{geofenceId}": {
+      "schema": { "$ref": "#/entities/GeofenceZone" },
+      "description": "Collection of geofence safety zones created by parents."
+    },
+    "/alerts/{alertId}": {
+      "schema": { "$ref": "#/entities/AlertEvent" },
+      "description": "Collection of emergency, tamper, and geofence alerts."
+    },
+    "/timelineEvents/{eventId}": {
+      "schema": { "$ref": "#/entities/TimelineEvent" },
+      "description": "Chronological activity log entries for child movement and risk score changes."
+    }
+  }
+}

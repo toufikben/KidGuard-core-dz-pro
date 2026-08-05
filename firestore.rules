@@ -1,0 +1,119 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Catch-All Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper Functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(ownerUid) {
+      return isSignedIn() && request.auth.uid == ownerUid;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // KidProfile Validation
+    function isValidKidProfile(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && data.ownerUid is string && data.ownerUid == request.auth.uid
+        && (data.avatarPreset is string && data.avatarPreset.size() <= 50)
+        && data.currentLat is number
+        && data.currentLng is number
+        && data.speedKmH is number
+        && data.batteryPercent is number
+        && (data.statusText is string && data.statusText.size() <= 200)
+        && data.lastUpdatedMs is number
+        && data.safeZoneRadiusMeters is number;
+    }
+
+    // GeofenceZone Validation
+    function isValidGeofenceZone(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && data.latitude is number
+        && data.longitude is number
+        && data.radiusMeters is number
+        && data.ownerUid is string && data.ownerUid == request.auth.uid
+        && (data.color is string && data.color.size() <= 50)
+        && data.isActive is bool;
+    }
+
+    // AlertEvent Validation
+    function isValidAlertEvent(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.kidId is string && data.kidId.size() <= 128
+        && (data.kidName is string && data.kidName.size() <= 100)
+        && (data.alertType is string && data.alertType.size() <= 50)
+        && data.title is string && data.title.size() <= 150
+        && data.message is string && data.message.size() <= 500
+        && data.timestamp is number
+        && data.latitude is number
+        && data.longitude is number
+        && data.isRead is bool
+        && data.ownerUid is string && data.ownerUid == request.auth.uid;
+    }
+
+    // TimelineEvent Validation
+    function isValidTimelineEvent(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.timeString is string && data.timeString.size() <= 50
+        && data.timestampMs is number
+        && data.title is string && data.title.size() <= 150
+        && data.subtitle is string && data.subtitle.size() <= 300
+        && data.category is string && data.category.size() <= 50
+        && (data.locationName is string && data.locationName.size() <= 200)
+        && data.riskScore is number
+        && data.ownerUid is string && data.ownerUid == request.auth.uid;
+    }
+
+    // Collection Rules
+    match /kids/{kidId} {
+      allow get: if isSignedIn() && isOwner(existing().ownerUid);
+      allow list: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(kidId) && isValidKidProfile(incoming());
+      allow update: if isSignedIn() && isValidId(kidId) && isOwner(existing().ownerUid) && isValidKidProfile(incoming()) && incoming().ownerUid == existing().ownerUid;
+      allow delete: if isSignedIn() && isValidId(kidId) && isOwner(existing().ownerUid);
+    }
+
+    match /geofences/{geofenceId} {
+      allow get: if isSignedIn() && isOwner(existing().ownerUid);
+      allow list: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(geofenceId) && isValidGeofenceZone(incoming());
+      allow update: if isSignedIn() && isValidId(geofenceId) && isOwner(existing().ownerUid) && isValidGeofenceZone(incoming()) && incoming().ownerUid == existing().ownerUid;
+      allow delete: if isSignedIn() && isValidId(geofenceId) && isOwner(existing().ownerUid);
+    }
+
+    match /alerts/{alertId} {
+      allow get: if isSignedIn() && isOwner(existing().ownerUid);
+      allow list: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(alertId) && isValidAlertEvent(incoming());
+      allow update: if isSignedIn() && isValidId(alertId) && isOwner(existing().ownerUid) && isValidAlertEvent(incoming()) && incoming().ownerUid == existing().ownerUid;
+      allow delete: if isSignedIn() && isValidId(alertId) && isOwner(existing().ownerUid);
+    }
+
+    match /timelineEvents/{eventId} {
+      allow get: if isSignedIn() && isOwner(existing().ownerUid);
+      allow list: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(eventId) && isValidTimelineEvent(incoming());
+      allow update: if isSignedIn() && isValidId(eventId) && isOwner(existing().ownerUid) && isValidTimelineEvent(incoming()) && incoming().ownerUid == existing().ownerUid;
+      allow delete: if isSignedIn() && isValidId(eventId) && isOwner(existing().ownerUid);
+    }
+  }
+}

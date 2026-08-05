@@ -1,0 +1,76 @@
+name: Build & Release Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Type check
+      run: npx tsc --noEmit
+
+    - name: Build Web App
+      run: npm run build
+
+    - name: Sync Capacitor Android
+      run: npx cap sync android
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v4
+      with:
+        gradle-version: '8.10.2'
+        validate-wrappers: false
+        build-root-directory: android
+
+    - name: Ensure Clean Gradle Wrapper
+      run: npm run reinit-gradle
+
+    - name: Build Android APK & AAB
+      run: |
+        cd android
+        ./gradlew assembleDebug bundleDebug
+
+    - name: Upload Web Build Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: web-dist
+        path: dist/
+        retention-days: 14
+
+    - name: Upload Android APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-apk
+        path: android/app/build/outputs/apk/debug/*.apk
+        retention-days: 14
+
+    - name: Upload Android AAB
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-aab
+        path: android/app/build/outputs/bundle/debug/*.aab
+        retention-days: 14
+

@@ -1,0 +1,10 @@
+{
+  "name": "KidGuard",
+  "description": "Real-time GPS tracking, interactive geofences, risk & tamper engine, and emergency SOS alerts system for parent peace of mind.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
