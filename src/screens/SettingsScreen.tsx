@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Globe, KeyRound, Lock, Phone, MessageSquare, Sun, Moon, Laptop, ShieldCheck, Cloud, LogIn, LogOut, AlertTriangle } from 'lucide-react';
+import { Settings, Globe, KeyRound, Lock, Phone, MessageSquare, Sun, Moon, Laptop, ShieldCheck, Cloud, LogIn, LogOut, AlertTriangle, Heart, Code2, Sparkles } from 'lucide-react';
 import { ParentAuth, AppLanguageCode, AppThemeMode } from '../types';
 import { AppStrings, APP_LANGUAGES } from '../i18n/translations';
 import { auth, loginWithGoogle, logoutFirebase, subscribeToAuthChanges } from '../services/firebase';
@@ -345,6 +345,40 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         <p className="text-xs text-slate-400">
           The 4-digit PIN is required to access or modify safety settings and manage children profiles.
         </p>
+      </div>
+
+      {/* 6. Developer Credits & Dedication Card */}
+      <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950/40 border border-slate-800/90 rounded-2xl p-4 space-y-3.5 shadow-md relative overflow-hidden">
+        <div className="absolute -top-10 -right-10 w-28 h-28 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
+        
+        <div className="flex items-center gap-2.5 text-white font-bold text-xs border-b border-slate-800/80 pb-2.5">
+          <div className="w-7 h-7 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+            <Code2 className="w-4 h-4" />
+          </div>
+          <div>
+            <span className="text-xs text-slate-200 font-bold block">
+              {currentLang === 'ar' ? 'معلومات التطوير والتصميم' : currentLang === 'fr' ? 'Développement & Conception' : 'Development & Design'}
+            </span>
+            <span className="text-[11px] text-blue-400 font-extrabold flex items-center gap-1 mt-0.5">
+              <span>Toufik Bendjeddah</span>
+              <Sparkles className="w-3 h-3" />
+            </span>
+          </div>
+        </div>
+
+        <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3 space-y-1.5">
+          <div className="flex items-center gap-1.5 text-rose-400 font-bold text-xs">
+            <Heart className="w-3.5 h-3.5 fill-rose-500/30 text-rose-400 shrink-0" />
+            <span>{currentLang === 'ar' ? 'إهداء خاص:' : currentLang === 'fr' ? 'Dédicace spéciale:' : 'Special Dedication:'}</span>
+          </div>
+          <p className="text-xs text-slate-300 leading-relaxed font-medium">
+            {currentLang === 'ar'
+              ? 'إهداء إلى أمي الغالية، إخوتي، رفيقة دربي إيمان، وجميع أصدقائي.'
+              : currentLang === 'fr'
+              ? 'Dédicacé à ma mère, mes frères et sœurs, mon âme sœur Imane, et tous mes amis.'
+              : 'Dedicated to my mother, my siblings, my soulmate Imane, and my friends.'}
+          </p>
+        </div>
       </div>
 
       {/* Lock App Immediately Button */}

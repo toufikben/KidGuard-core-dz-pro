@@ -85,14 +85,34 @@ const DEFAULT_PARENT_AUTH: ParentAuth = {
   lockedUntilTimestamp: null,
 };
 
+// In-memory fallback cache in case localStorage/IndexedDB is disabled, closing, or hidden
+const memoryCache: Record<string, string> = {};
+
+function safeGetItem(key: string): string | null {
+  try {
+    return localStorage.getItem(key) ?? memoryCache[key] ?? null;
+  } catch {
+    return memoryCache[key] ?? null;
+  }
+}
+
+function safeSetItem(key: string, value: string): void {
+  memoryCache[key] = value;
+  try {
+    localStorage.setItem(key, value);
+  } catch (e) {
+    console.warn(`Storage setItem failed for key ${key}:`, e);
+  }
+}
+
 export const StorageService = {
   getKids(): KidProfile[] {
-    const data = localStorage.getItem(KEYS.KIDS);
-    if (!data) {
-      localStorage.setItem(KEYS.KIDS, JSON.stringify(DEFAULT_KIDS));
-      return DEFAULT_KIDS;
-    }
     try {
+      const data = safeGetItem(KEYS.KIDS);
+      if (!data) {
+        this.saveKids(DEFAULT_KIDS);
+        return DEFAULT_KIDS;
+      }
       return JSON.parse(data);
     } catch {
       return DEFAULT_KIDS;
@@ -100,16 +120,20 @@ export const StorageService = {
   },
 
   saveKids(kids: KidProfile[]): void {
-    localStorage.setItem(KEYS.KIDS, JSON.stringify(kids));
+    try {
+      safeSetItem(KEYS.KIDS, JSON.stringify(kids));
+    } catch (e) {
+      console.warn('saveKids failed:', e);
+    }
   },
 
   getGeofences(): GeofenceZone[] {
-    const data = localStorage.getItem(KEYS.GEOFENCES);
-    if (!data) {
-      localStorage.setItem(KEYS.GEOFENCES, JSON.stringify(DEFAULT_GEOFENCES));
-      return DEFAULT_GEOFENCES;
-    }
     try {
+      const data = safeGetItem(KEYS.GEOFENCES);
+      if (!data) {
+        this.saveGeofences(DEFAULT_GEOFENCES);
+        return DEFAULT_GEOFENCES;
+      }
       return JSON.parse(data);
     } catch {
       return DEFAULT_GEOFENCES;
@@ -117,13 +141,17 @@ export const StorageService = {
   },
 
   saveGeofences(zones: GeofenceZone[]): void {
-    localStorage.setItem(KEYS.GEOFENCES, JSON.stringify(zones));
+    try {
+      safeSetItem(KEYS.GEOFENCES, JSON.stringify(zones));
+    } catch (e) {
+      console.warn('saveGeofences failed:', e);
+    }
   },
 
   getLocationLogs(): LocationLog[] {
-    const data = localStorage.getItem(KEYS.LOCATION_LOGS);
-    if (!data) return [];
     try {
+      const data = safeGetItem(KEYS.LOCATION_LOGS);
+      if (!data) return [];
       return JSON.parse(data);
     } catch {
       return [];
@@ -131,13 +159,17 @@ export const StorageService = {
   },
 
   saveLocationLogs(logs: LocationLog[]): void {
-    localStorage.setItem(KEYS.LOCATION_LOGS, JSON.stringify(logs));
+    try {
+      safeSetItem(KEYS.LOCATION_LOGS, JSON.stringify(logs));
+    } catch (e) {
+      console.warn('saveLocationLogs failed:', e);
+    }
   },
 
   getAlerts(): AlertEvent[] {
-    const data = localStorage.getItem(KEYS.ALERTS);
-    if (!data) return [];
     try {
+      const data = safeGetItem(KEYS.ALERTS);
+      if (!data) return [];
       return JSON.parse(data);
     } catch {
       return [];
@@ -145,18 +177,21 @@ export const StorageService = {
   },
 
   saveAlerts(alerts: AlertEvent[]): void {
-    localStorage.setItem(KEYS.ALERTS, JSON.stringify(alerts));
+    try {
+      safeSetItem(KEYS.ALERTS, JSON.stringify(alerts));
+    } catch (e) {
+      console.warn('saveAlerts failed:', e);
+    }
   },
 
   getParentAuth(): ParentAuth {
-    const data = localStorage.getItem(KEYS.PARENT_AUTH);
-    if (!data) {
-      localStorage.setItem(KEYS.PARENT_AUTH, JSON.stringify(DEFAULT_PARENT_AUTH));
-      return DEFAULT_PARENT_AUTH;
-    }
     try {
+      const data = safeGetItem(KEYS.PARENT_AUTH);
+      if (!data) {
+        this.saveParentAuth(DEFAULT_PARENT_AUTH);
+        return DEFAULT_PARENT_AUTH;
+      }
       const parsed = JSON.parse(data);
-      // Backfill fields for auth records saved before brute-force lockout was added.
       return {
         ...DEFAULT_PARENT_AUTH,
         ...parsed,
@@ -169,35 +204,63 @@ export const StorageService = {
   },
 
   saveParentAuth(auth: ParentAuth): void {
-    localStorage.setItem(KEYS.PARENT_AUTH, JSON.stringify(auth));
+    try {
+      safeSetItem(KEYS.PARENT_AUTH, JSON.stringify(auth));
+    } catch (e) {
+      console.warn('saveParentAuth failed:', e);
+    }
   },
 
   getSelectedKidId(): number {
-    const id = localStorage.getItem(KEYS.SELECTED_KID_ID);
-    return id ? parseInt(id, 10) : 1;
+    try {
+      const id = safeGetItem(KEYS.SELECTED_KID_ID);
+      return id ? parseInt(id, 10) : 1;
+    } catch {
+      return 1;
+    }
   },
 
   saveSelectedKidId(id: number): void {
-    localStorage.setItem(KEYS.SELECTED_KID_ID, id.toString());
+    try {
+      safeSetItem(KEYS.SELECTED_KID_ID, id.toString());
+    } catch (e) {
+      console.warn('saveSelectedKidId failed:', e);
+    }
   },
 
   getLanguage(): AppLanguageCode {
-    const lang = localStorage.getItem(KEYS.LANGUAGE);
-    if (lang === 'ar' || lang === 'fr' || lang === 'en') return lang;
-    return 'ar'; // Default matching Android app
+    try {
+      const lang = safeGetItem(KEYS.LANGUAGE);
+      if (lang === 'ar' || lang === 'fr' || lang === 'en') return lang;
+      return 'ar';
+    } catch {
+      return 'ar';
+    }
   },
 
   saveLanguage(lang: AppLanguageCode): void {
-    localStorage.setItem(KEYS.LANGUAGE, lang);
+    try {
+      safeSetItem(KEYS.LANGUAGE, lang);
+    } catch (e) {
+      console.warn('saveLanguage failed:', e);
+    }
   },
 
   getThemeMode(): AppThemeMode {
-    const mode = localStorage.getItem(KEYS.THEME_MODE);
-    if (mode === 'dark' || mode === 'system' || mode === 'light') return mode;
-    return 'light';
+    try {
+      const mode = safeGetItem(KEYS.THEME_MODE);
+      if (mode === 'dark' || mode === 'system' || mode === 'light') return mode;
+      return 'light';
+    } catch {
+      return 'light';
+    }
   },
 
   saveThemeMode(mode: AppThemeMode): void {
-    localStorage.setItem(KEYS.THEME_MODE, mode);
+    try {
+      safeSetItem(KEYS.THEME_MODE, mode);
+    } catch (e) {
+      console.warn('saveThemeMode failed:', e);
+    }
   },
 };
