@@ -68,6 +68,31 @@ public class KidGuardForegroundService extends Service {
         return null;
     }
 
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        // Restart service and broadcast/alarm when swiped away from recent apps
+        Intent restartServiceIntent = new Intent(getApplicationContext(), KidGuardForegroundService.class);
+        restartServiceIntent.setPackage(getPackageName());
+        
+        PendingIntent restartServicePendingIntent = PendingIntent.getService(
+            getApplicationContext(),
+            1,
+            restartServiceIntent,
+            PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        android.app.AlarmManager alarmService = (android.app.AlarmManager) getApplicationContext().getSystemService(Context.ALARM_SERVICE);
+        if (alarmService != null) {
+            alarmService.setExact(
+                android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                android.os.SystemClock.elapsedRealtime() + 1000,
+                restartServicePendingIntent
+            );
+        }
+        
+        super.onTaskRemoved(rootIntent);
+    }
+
     private void showNotification() {
         Intent notificationIntent = new Intent(this, MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(
