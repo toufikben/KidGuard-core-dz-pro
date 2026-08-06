@@ -69,7 +69,11 @@ export const App: React.FC = () => {
   const [alerts, setAlerts] = useState<AlertEvent[]>(() => StorageService.getAlerts());
 
   const [currentLang, setCurrentLang] = useState<AppLanguageCode>(() => StorageService.getLanguage());
-  const [currentTheme, setCurrentTheme] = useState<AppThemeMode>(() => StorageService.getThemeMode());
+  const [currentTheme, setCurrentTheme] = useState<AppThemeMode>(() => {
+    const saved = StorageService.getThemeMode();
+    // Default to dark if not explicitly set to light
+    return saved === 'light' ? 'light' : 'dark';
+  });
   const [activeTab, setActiveTab] = useState<ActiveTab>('radar');
 
   const [isSimulatingWalk, setIsSimulatingWalk] = useState(false);
