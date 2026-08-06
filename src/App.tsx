@@ -446,6 +446,25 @@ export const App: React.FC = () => {
     setIsSimulatingWalk((prev) => !prev);
   };
 
+  // Automatically sync with device Battery API if running on supported browser/device
+  useEffect(() => {
+    if ('getBattery' in navigator) {
+      (navigator as any).getBattery().then((battery: any) => {
+        const updateBattery = () => {
+          const level = Math.round(battery.level * 100);
+          setKids((prevKids) =>
+            prevKids.map((k, idx) => (idx === 0 ? { ...k, batteryPercent: level } : k))
+          );
+        };
+        updateBattery();
+        battery.addEventListener('levelchange', updateBattery);
+        return () => {
+          battery.removeEventListener('levelchange', updateBattery);
+        };
+      }).catch(() => {});
+    }
+  }, []);
+
   const handleTriggerSos = () => {
     if (!activeKid) return;
     const emergencyTick = emergencyEngineRef.current.evaluate([{ type: 'TamperDetected', tamperType: 'APP_KILLED' }]);
