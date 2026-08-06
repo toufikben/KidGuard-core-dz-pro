@@ -5,7 +5,10 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Build;
 import android.os.IBinder;
 import androidx.core.app.NotificationCompat;
@@ -13,15 +16,59 @@ import androidx.core.app.NotificationCompat;
 public class KidGuardForegroundService extends Service {
     private static final String CHANNEL_ID = "KidGuardForegroundChannel";
     private static final int NOTIFICATION_ID = 1337;
+    public static final String ACTION_TOGGLE_MONITORING = "com.kidguard.app.ACTION_TOGGLE_MONITORING";
+    
+    private boolean isMonitoringActive = true;
+    private BroadcastReceiver toggleReceiver;
 
     @Override
     public void onCreate() {
         super.onCreate();
         createNotificationChannel();
+
+        // Register broadcast receiver for notification action button
+        toggleReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (ACTION_TOGGLE_MONITORING.equals(intent.getAction())) {
+                    isMonitoringActive = !isMonitoringActive;
+                    updateNotification();
+                }
+            }
+        };
+
+        IntentFilter filter = new IntentFilter(ACTION_TOGGLE_MONITORING);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(toggleReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(toggleReceiver, filter);
+        }
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        showNotification();
+        return START_STICKY;
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (toggleReceiver != null) {
+            try {
+                unregisterReceiver(toggleReceiver);
+            } catch (Exception e) {
+                // Ignore if already unregistered
+            }
+        }
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
+
+    private void showNotification() {
         Intent notificationIntent = new Intent(this, MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(
             this,
@@ -30,25 +77,66 @@ public class KidGuardForegroundService extends Service {
             PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
         );
 
+        Intent toggleIntent = new Intent(ACTION_TOGGLE_MONITORING);
+        PendingIntent togglePendingIntent = PendingIntent.getBroadcast(
+            this,
+            1,
+            toggleIntent,
+            PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+        );
+
+        String statusText = isMonitoringActive ? "Telemetry monitoring is active." : "Telemetry monitoring is paused.";
+        String actionButtonTitle = isMonitoringActive ? "Pause" : "Resume";
+
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("KidGuard Active")
-            .setContentText("KidGuard is running in the background protecting device telemetry.")
+            .setContentTitle("KidGuard Protection")
+            .setContentText(statusText)
             .setSmallIcon(android.R.drawable.ic_lock_lock)
             .setContentIntent(pendingIntent)
+            .addAction(android.R.drawable.ic_media_pause, actionButtonTitle, togglePendingIntent)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .build();
 
         startForeground(NOTIFICATION_ID, notification);
-
-        // START_STICKY ensures service is restarted if terminated by system
-        return START_STICKY;
     }
 
-    @Override
-    public IBinder onBind(Intent intent) {
-        return null;
+    private void updateNotification() {
+        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (manager != null) {
+            Intent notificationIntent = new Intent(this, MainActivity.class);
+            PendingIntent pendingIntent = PendingIntent.getActivity(
+                this,
+                0,
+                notificationIntent,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+            );
+
+            Intent toggleIntent = new Intent(ACTION_TOGGLE_MONITORING);
+            PendingIntent togglePendingIntent = PendingIntent.getBroadcast(
+                this,
+                1,
+                toggleIntent,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+            );
+
+            String statusText = isMonitoringActive ? "Telemetry monitoring is active." : "Telemetry monitoring is paused.";
+            String actionButtonTitle = isMonitoringActive ? "Pause" : "Resume";
+
+            Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("KidGuard Protection")
+                .setContentText(statusText)
+                .setSmallIcon(android.R.drawable.ic_lock_lock)
+                .setContentIntent(pendingIntent)
+                .addAction(android.R.drawable.ic_media_pause, actionButtonTitle, togglePendingIntent)
+                .setOngoing(true)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_SERVICE)
+                .build();
+
+            manager.notify(NOTIFICATION_ID, notification);
+        }
     }
 
     private void createNotificationChannel() {
