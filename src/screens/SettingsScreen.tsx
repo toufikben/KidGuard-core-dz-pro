@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Globe, KeyRound, Lock, Phone, MessageSquare, Sun, Moon, Laptop, ShieldCheck, Cloud, LogIn, LogOut, AlertTriangle, Heart, Code2, Sparkles } from 'lucide-react';
+import { Settings, Globe, KeyRound, Lock, Phone, MessageSquare, Sun, Moon, Laptop, ShieldCheck, Cloud, LogIn, LogOut, AlertTriangle, Heart, Code2, Sparkles, Mic, Camera, MapPin, CheckCircle2 } from 'lucide-react';
 import { ParentAuth, AppLanguageCode, AppThemeMode } from '../types';
 import { AppStrings, APP_LANGUAGES } from '../i18n/translations';
+import { PermissionService } from '../services/PermissionService';
 import { auth, loginWithGoogle, logoutFirebase, subscribeToAuthChanges } from '../services/firebase';
 import { hashPin } from '../services/hashing';
 import { User } from 'firebase/auth';
@@ -37,6 +38,22 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
   const [parentPhoneInput, setParentPhoneInput] = useState(parentAuth.parentPhone);
   const [user, setUser] = useState<User | null>(auth.currentUser);
+  const [permStatus, setPermStatus] = useState({ location: false, microphone: false, camera: false });
+  const [isRequestingPerms, setIsRequestingPerms] = useState(false);
+
+  const handleRequestAllPermissions = async () => {
+    setIsRequestingPerms(true);
+    const res = await PermissionService.requestAllPermissions();
+    setPermStatus(res);
+    setIsRequestingPerms(false);
+    alert(
+      currentLang === 'ar'
+        ? `تم تحديث الأذونات: الموقع (${res.location ? 'مسموح' : 'مرفوض'}), الميكروفون والصوت (${res.microphone ? 'مسموح' : 'مرفوض'}), الكاميرا (${res.camera ? 'مسموح' : 'مرفوض'})`
+        : currentLang === 'fr'
+        ? `Permissions mises à jour : Localisation (${res.location ? 'Accordé' : 'Refusé'}), Micro (${res.microphone ? 'Accordé' : 'Refusé'}), Caméra (${res.camera ? 'Accordé' : 'Refusé'})`
+        : `Permissions updated: Location (${res.location ? 'Granted' : 'Denied'}), Microphone/Audio (${res.microphone ? 'Granted' : 'Denied'}), Camera (${res.camera ? 'Granted' : 'Denied'})`
+    );
+  };
 
   useEffect(() => {
     const unsubscribe = subscribeToAuthChanges((u) => setUser(u));
@@ -349,7 +366,56 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
 
 
-      {/* 6. Developer Credits & Dedication Card */}
+      {/* 6. Device Permissions & Audio Recording Access */}
+      <div className="dark:bg-slate-900 bg-white dark:border-slate-800 border-slate-200 rounded-2xl p-4 space-y-3 shadow-md">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2 dark:text-white text-slate-900 font-bold text-xs">
+            <Mic className="w-4 h-4 text-rose-400 shrink-0" />
+            <span>
+              {currentLang === 'ar'
+                ? 'أذونات الجهاز وتسجيل الصوت'
+                : currentLang === 'fr'
+                ? 'Permissions de l appareil & Audio'
+                : 'Device Permissions & Audio Recording'}
+            </span>
+          </div>
+
+          <button
+            onClick={handleRequestAllPermissions}
+            disabled={isRequestingPerms}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-600/50 text-white text-xs font-bold rounded-xl shadow transition-colors shrink-0 whitespace-nowrap w-full sm:w-auto"
+          >
+            {isRequestingPerms
+              ? (currentLang === 'ar' ? 'جاري الطلب...' : currentLang === 'fr' ? 'Demande...' : 'Requesting...')
+              : (currentLang === 'ar' ? 'منح وتأكيد الأذونات' : currentLang === 'fr' ? 'Confirmer les permissions' : 'Request & Confirm Permissions')}
+          </button>
+        </div>
+
+        <p className="text-xs dark:text-slate-400 text-slate-600">
+          {currentLang === 'ar'
+            ? 'يتطلب التطبيق أذونات الميكروفون لتسجيل الصوت المحيط، والموقع الجغرافي لتتبع السلامة، والكاميرا لميزات الحماية. اضغط للتأكيد.'
+            : currentLang === 'fr'
+            ? 'L application nécessite les permissions du microphone pour l enregistrement audio ambiant, de la localisation pour le suivi de sécurité, et de la caméra. Cliquez pour confirmer.'
+            : 'The app requires microphone permission for ambient audio recording, location for safety tracking, and camera access. Tap to request and confirm runtime permissions.'}
+        </p>
+
+        <div className="grid grid-cols-3 gap-2 pt-1">
+          <div className="p-2.5 rounded-xl border dark:bg-slate-800/80 bg-slate-100 dark:border-slate-700 border-slate-300 flex items-center gap-1.5 text-xs font-bold dark:text-slate-200 text-slate-800">
+            <MapPin className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+            <span className="truncate">GPS: {permStatus.location ? '✓' : 'Tap'}</span>
+          </div>
+          <div className="p-2.5 rounded-xl border dark:bg-slate-800/80 bg-slate-100 dark:border-slate-700 border-slate-300 flex items-center gap-1.5 text-xs font-bold dark:text-slate-200 text-slate-800">
+            <Mic className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+            <span className="truncate">Mic: {permStatus.microphone ? '✓' : 'Tap'}</span>
+          </div>
+          <div className="p-2.5 rounded-xl border dark:bg-slate-800/80 bg-slate-100 dark:border-slate-700 border-slate-300 flex items-center gap-1.5 text-xs font-bold dark:text-slate-200 text-slate-800">
+            <Camera className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="truncate">Cam: {permStatus.camera ? '✓' : 'Tap'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 7. Developer Credits & Dedication Card */}
       <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950/40 border border-slate-800/90 rounded-2xl p-4 space-y-3.5 shadow-md relative overflow-hidden">
         <div className="absolute -top-10 -right-10 w-28 h-28 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
         
