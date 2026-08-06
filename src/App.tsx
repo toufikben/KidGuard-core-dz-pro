@@ -8,6 +8,7 @@ import { StorageService } from './services/storage';
 import { audioSiren } from './services/audioSiren';
 import { NotificationService } from './services/notifications';
 import { locationService, LocationPosition } from './services/LocationService';
+import { BatteryService } from './services/BatteryService';
 import { AppStrings } from './i18n/translations';
 import {
   KidProfile,
@@ -446,23 +447,14 @@ export const App: React.FC = () => {
     setIsSimulatingWalk((prev) => !prev);
   };
 
-  // Automatically sync with device Battery API if running on supported browser/device
+  // Automatically sync with real device battery telemetry via BatteryService
   useEffect(() => {
-    if ('getBattery' in navigator) {
-      (navigator as any).getBattery().then((battery: any) => {
-        const updateBattery = () => {
-          const level = Math.round(battery.level * 100);
-          setKids((prevKids) =>
-            prevKids.map((k, idx) => (idx === 0 ? { ...k, batteryPercent: level } : k))
-          );
-        };
-        updateBattery();
-        battery.addEventListener('levelchange', updateBattery);
-        return () => {
-          battery.removeEventListener('levelchange', updateBattery);
-        };
-      }).catch(() => {});
-    }
+    const cleanup = BatteryService.startMonitoring((level) => {
+      setKids((prevKids) =>
+        prevKids.map((k, idx) => (idx === 0 ? { ...k, batteryPercent: level } : k))
+      );
+    }, 20000);
+    return cleanup;
   }, []);
 
   const handleTriggerSos = () => {
