@@ -16,11 +16,24 @@ public class BootReceiver extends BroadcastReceiver {
             Log.i(TAG, "Received broadcast intent action: " + action);
             
             if (Intent.ACTION_BOOT_COMPLETED.equals(action) ||
-                Intent.ACTION_QUICKBOOT_POWERON.equals(action) ||
+                "android.intent.action.QUICKBOOT_POWERON".equals(action) ||
                 "com.htc.intent.action.QUICKBOOT_POWERON".equals(action)) {
                 
-                Log.i(TAG, "Device reboot detected. Launching KidGuard background service / MainActivity...");
+                Log.i(TAG, "Device reboot detected. Starting KidGuard Foreground Service and MainActivity...");
                 
+                // Start Foreground Service
+                Intent serviceIntent = new Intent(context, KidGuardForegroundService.class);
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        context.startForegroundService(serviceIntent);
+                    } else {
+                        context.startService(serviceIntent);
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Failed to start Foreground Service on boot: " + e.getMessage(), e);
+                }
+
+                // Launch MainActivity
                 Intent launchIntent = new Intent(context, MainActivity.class);
                 launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 launchIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
