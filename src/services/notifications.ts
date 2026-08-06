@@ -50,7 +50,6 @@ export class NotificationService {
     // Prevent notification flooding if same tag & body sent within cooldown window
     const lastSent = this.lastSentMap.get(tag);
     if (lastSent && lastSent.body === body && now - lastSent.timestamp < cooldownMs) {
-      console.log(`[NotificationService] Suppressed duplicate notification flooding for tag: ${tag}`);
       return null;
     }
 

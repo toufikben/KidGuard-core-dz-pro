@@ -64,7 +64,6 @@ export const googleProvider = new GoogleAuthProvider();
 export async function testConnection() {
   try {
     await getDoc(doc(db, 'test', 'connection'));
-    console.log('Firebase Firestore connection initialized.');
   } catch (error) {
     const errMessage = error instanceof Error ? error.message : String(error);
     console.warn('Firestore operating in offline or cached mode:', errMessage);
