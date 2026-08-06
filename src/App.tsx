@@ -669,7 +669,6 @@ export const App: React.FC = () => {
                     onToggleSimulateWalk={handleToggleSimulateWalk}
                     onTriggerSos={handleTriggerSos}
                     onCheckIn={handleCheckIn}
-                    onToggleBatterySimulation={handleToggleBatterySimulation}
                     onCallParent={handleCallParent}
                     onSmsParent={handleSmsParent}
                     onUpdateParentPhone={(phone) => setParentAuth({ ...parentAuth, parentPhone: phone })}

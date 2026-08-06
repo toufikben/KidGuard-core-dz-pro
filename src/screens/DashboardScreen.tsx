@@ -18,7 +18,6 @@ interface DashboardScreenProps {
   onToggleSimulateWalk: () => void;
   onTriggerSos: () => void;
   onCheckIn: () => void;
-  onToggleBatterySimulation: () => void;
   onCallParent: () => void;
   onSmsParent: () => void;
   onUpdateParentPhone: (phone: string) => void;
@@ -48,7 +47,6 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   onToggleSimulateWalk,
   onTriggerSos,
   onCheckIn,
-  onToggleBatterySimulation,
   onCallParent,
   onSmsParent,
   onUpdateParentPhone,
@@ -120,19 +118,17 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
             </div>
           </div>
 
-          {/* Battery Status Toggle */}
-          <button
-            onClick={onToggleBatterySimulation}
-            title="Click to toggle battery status alert simulation"
+          {/* Live Child Battery Status Badge */}
+          <div
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-colors ${
               kid.batteryPercent <= 20
-                ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 animate-bounce'
-                : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 animate-pulse'
+                : 'bg-slate-800 text-slate-300 border-slate-700'
             }`}
           >
             <Battery className="w-4 h-4" />
             <span>{kid.batteryPercent}%</span>
-          </button>
+          </div>
         </div>
 
         {/* Status Metrics Grid */}
