@@ -347,49 +347,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         </p>
       </div>
 
-      {/* App Desktop Icon Showcase Card */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-md">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl overflow-hidden border border-blue-500/40 shadow-lg shadow-blue-500/20 shrink-0">
-              <img
-                src="/app_icon.png"
-                alt="KidGuard Desktop Icon"
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-            <div>
-              <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
-                <span>
-                  {currentLang === 'ar'
-                    ? 'أيقونة سطح المكتب والتطبيق'
-                    : currentLang === 'fr'
-                    ? 'Icône d’application & Bureau'
-                    : 'Desktop & App Icon'}
-                </span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-extrabold border border-blue-500/30">
-                  HD PRO
-                </span>
-              </h3>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                {currentLang === 'ar'
-                  ? 'تم تصميم أيقونة احترافية ثلاثية الأبعاد بدرع الأمان الأزرق البراق لسطح المكتب والشاشة الرئيسية'
-                  : currentLang === 'fr'
-                  ? 'Insigne 3D professionnel avec bouclier de protection pour l’écran d’accueil et le bureau'
-                  : 'High-tech 3D safety shield app icon designed for home screen & desktop shortcuts'}
-              </p>
-            </div>
-          </div>
-          <a
-            href="/app_icon.png"
-            download="KidGuard_Desktop_Icon.png"
-            className="px-3 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 text-xs font-bold rounded-xl transition-colors shrink-0 whitespace-nowrap"
-          >
-            {currentLang === 'ar' ? 'تحميل الأيقونة' : currentLang === 'fr' ? 'Télécharger' : 'Download Icon'}
-          </a>
-        </div>
-      </div>
+
 
       {/* 6. Developer Credits & Dedication Card */}
       <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950/40 border border-slate-800/90 rounded-2xl p-4 space-y-3.5 shadow-md relative overflow-hidden">
