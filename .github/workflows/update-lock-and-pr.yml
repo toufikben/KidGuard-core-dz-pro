@@ -1,0 +1,46 @@
+name: Update lockfile and open PR
+on:
+  push:
+    branches:
+      - fix/node-tar-audit-fix
+
+permissions:
+  contents: write
+
+jobs:
+  update-lock:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          persist-credentials: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies (no audit)
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Commit updated lockfile
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json || true
+          git commit -m "chore: update lockfile after forcing patched tar" || echo "no changes to commit"
+          git push origin HEAD:fix/node-tar-audit-fix || echo "push failed"
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: fix/node-tar-audit-fix
+          title: "fix: force patched tar to address npm audit vulnerabilities"
+          body: |
+            This PR forces a patched version of tar (node-tar) via package.json overrides to address vulnerabilities reported by npm audit.
+
+            The workflow updates package-lock.json accordingly and opens this PR. Please review updated lockfile and run tests/build before merging.
