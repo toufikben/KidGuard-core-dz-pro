@@ -353,7 +353,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl overflow-hidden border border-blue-500/40 shadow-lg shadow-blue-500/20 shrink-0">
               <img
-                src="/src/assets/images/app_desktop_icon_1785970230746.jpg"
+                src="/app_icon.png"
                 alt="KidGuard Desktop Icon"
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
@@ -382,8 +382,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             </div>
           </div>
           <a
-            href="/src/assets/images/app_desktop_icon_1785970230746.jpg"
-            download="KidGuard_Desktop_Icon.jpg"
+            href="/app_icon.png"
+            download="KidGuard_Desktop_Icon.png"
             className="px-3 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 text-xs font-bold rounded-xl transition-colors shrink-0 whitespace-nowrap"
           >
             {currentLang === 'ar' ? 'تحميل الأيقونة' : currentLang === 'fr' ? 'Télécharger' : 'Download Icon'}

@@ -41,7 +41,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden border border-blue-500/30 shadow-md shadow-blue-500/10 shrink-0">
             <img
-              src="/src/assets/images/app_desktop_icon_1785970230746.jpg"
+              src="/app_icon.png"
               alt="KidGuard Desktop Icon"
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"
