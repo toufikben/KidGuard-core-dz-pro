@@ -1,0 +1,56 @@
+name: Auto-merge PR when checks pass
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+
+jobs:
+  automerge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for checks to complete and succeed
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            if (!pr) core.setFailed('No pull_request found in payload');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const headSha = pr.head.sha;
+            const maxAttempts = 60;
+            const delay = ms => new Promise(res => setTimeout(res, ms));
+
+            for (let i = 0; i < maxAttempts; i++) {
+              // Check combined status first
+              const { data: combined } = await github.repos.getCombinedStatusForRef({ owner, repo, ref: headSha });
+              if (combined.state === 'success') {
+                console.log('Combined status is success');
+                return;
+              }
+
+              // Fallback to checks API
+              const { data: runs } = await github.checks.listForRef({ owner, repo, ref: headSha });
+              if (runs.total_count > 0) {
+                const completed = runs.check_runs.filter(r => r.status === 'completed');
+                if (completed.length === runs.total_count && completed.every(r => r.conclusion === 'success')) {
+                  console.log('All check runs completed successfully');
+                  return;
+                }
+              }
+
+              console.log(`Waiting for checks to finish (attempt ${i + 1}/${maxAttempts})`);
+              await delay(20000);
+            }
+
+            core.setFailed('Checks did not complete successfully within timeout');
+      - name: Merge pull request
+        uses: peter-evans/merge-pull-request@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          merge-method: squash
+          commit-title: "chore: merge PR after lockfile update"
