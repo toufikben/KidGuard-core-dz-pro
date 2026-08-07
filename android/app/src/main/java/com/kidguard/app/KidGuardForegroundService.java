@@ -9,6 +9,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.ServiceInfo;
 import android.os.Build;
 import android.os.IBinder;
 import androidx.core.app.NotificationCompat;
@@ -124,7 +125,17 @@ public class KidGuardForegroundService extends Service {
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .build();
 
-        startForeground(NOTIFICATION_ID, notification);
+        // The manifest declares this service with
+        // android:foregroundServiceType="location", so on Android 10+ (API 29+)
+        // that same type must be passed explicitly here - the plain
+        // startForeground(id, notification) overload (no type) throws
+        // MissingForegroundServiceTypeException on Android 14+ and crashes the
+        // app the instant this service starts.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
+        } else {
+            startForeground(NOTIFICATION_ID, notification);
+        }
     }
 
     private void updateNotification() {
